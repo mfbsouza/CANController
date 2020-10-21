@@ -1,10 +1,16 @@
 #include <cancontroller.h>
 
+// just in case there is no CAN_SPEED defined
+#ifndef TQ_SEG1
+    #define TQ_SEG1 12
+    #define TQ_SEG2 3
+#endif
+
 uint8_t hard_sync   = FALSE, soft_sync    = FALSE;
 uint8_t write_point = FALSE, sample_point = FALSE;
 
-uint8_t state       = 0, tq_count     = 0;
-uint8_t phase_error = 0;
+uint8_t state    = 0, bus_idle    = FALSE;
+uint8_t tq_count = 0, phase_error = 0;
 
 void bit_timing_fsm (void) {
 
