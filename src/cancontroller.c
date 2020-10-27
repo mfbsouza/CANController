@@ -1,16 +1,44 @@
 #include <cancontroller.h>
 
-// just in case there is no CAN_SPEED defined
-#ifndef TQ_SEG1
-    #define TQ_SEG1 12
-    #define TQ_SEG2 3
-#endif
+static uint8_t hard_sync   = FALSE, soft_sync    = FALSE;
+static uint8_t write_point = FALSE, sample_point = FALSE;
+static uint8_t state       = 0,     bus_idle     = FALSE;
+static uint8_t tq_count    = 0,     phase_error  = 0;
 
-uint8_t hard_sync   = FALSE, soft_sync    = FALSE;
-uint8_t write_point = FALSE, sample_point = FALSE;
+/* Interrupt Service Routines */
 
-uint8_t state    = 0, bus_idle    = FALSE;
-uint8_t tq_count = 0, phase_error = 0;
+ISR (TIMER0_COMPA_vect) {
+    bit_timing_fsm();
+}
+
+ISR (INT0_vect) {
+    edge_detector();
+}
+
+/* Functions */
+
+void can_init(void) {
+    // INT0/PD2 as CAN RX
+    MCUCR  |= (1 << PUD);
+    DDRD   |= (1 << PD2);
+    EICRA  |= (1 << ISC01) | (1 << ISC00);
+    EIMSK  |= (1 << INT0);
+
+    // Bit Timing Interrupt
+    TCCR0B |= (1 << CS00);
+    TCCR0A |= (1 << WGM01);
+    TCNT0   = 0x00;
+    OCR0A   = (uint8_t) ticks(TQ_LENGTH);
+    TIMSK0 |= (1 << OCIE0A);
+
+    // Enable CPU Interrupts
+    sei();
+}
+
+void edge_detector (void) {
+    if(bus_idle) hard_sync = TRUE;
+    else soft_sync = TRUE;
+}
 
 void bit_timing_fsm (void) {
 
